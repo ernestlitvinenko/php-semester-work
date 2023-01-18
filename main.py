@@ -1,20 +1,25 @@
-from os import environ
 import uvicorn
+
+from users.views import router as user_router
 from fastapi import FastAPI
-from database import database_init
-from dotenv import load_dotenv
+from models.mongo_models.connection import connect_db
+from loguru import logger
+from config import CONFIG
+
+
+logger.add(CONFIG.log_file, level='DEBUG', serialize=True)
+
 app = FastAPI()
+app.include_router(user_router)
 
-# On startup
+
 @app.on_event('startup')
-def statrup_handler():
-    load_dotenv('development.env')
-    print("Connection string is", environ.get('MONGO_DB_CONNECTION_STRING'))
-    
-    # set attribute database for app var  
-
-    setattr(app, 'database',  database_init(environ.get('MONGO_DB_CONNECTION_STRING', '')))
+async def startup():
+    try:
+        await connect_db()
+        print("Connection to DB successed")
+    except Exception as exc:
+        print(exc)
 
 if __name__ == '__main__':
-    uvicorn.run('main:app', port=8000, host='127.0.0.1')
-            
+    uvicorn.run('main:app', port=8000, host='127.0.0.1', reload=True)
